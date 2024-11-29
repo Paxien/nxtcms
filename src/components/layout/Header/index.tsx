@@ -27,11 +27,17 @@ export function Header() {
 
   useEffect(() => {
     loadNavigation()
-  }, [])
+  }, [pathname]) // Reload when pathname changes
 
   const loadNavigation = async () => {
     try {
-      const response = await fetch('/api/navigation')
+      const response = await fetch('/api/navigation', {
+        cache: 'no-store', // Disable caching
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      })
       if (response.ok) {
         const data = await response.json()
         setNavigationItems(data.headerLinks)

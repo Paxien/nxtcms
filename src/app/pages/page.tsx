@@ -6,18 +6,18 @@ import Link from 'next/link'
 interface Page {
   name: string
   path: string
-  access: string
   showInHeader: boolean
+  access?: 'public' | 'protected'
 }
 
-interface NewPage {
+interface PageFormData {
   name: string
   path: string
   access: 'public' | 'protected'
   showInHeader: boolean
 }
 
-const defaultNewPage: NewPage = {
+const defaultPageForm: PageFormData = {
   name: '',
   path: '',
   access: 'public',
@@ -27,8 +27,9 @@ const defaultNewPage: NewPage = {
 export default function Pages() {
   const [pages, setPages] = useState<Page[]>([])
   const [message, setMessage] = useState<string>('')
-  const [isAddingPage, setIsAddingPage] = useState(false)
-  const [newPage, setNewPage] = useState<NewPage>(defaultNewPage)
+  const [isFormOpen, setIsFormOpen] = useState(false)
+  const [editingPage, setEditingPage] = useState<string | null>(null)
+  const [pageForm, setPageForm] = useState<PageFormData>(defaultPageForm)
 
   useEffect(() => {
     loadPages()
@@ -41,13 +42,54 @@ export default function Pages() {
       .catch((error) => console.error('Error loading navigation:', error))
   }
 
-  const toggleHeaderVisibility = async (pagePath: string) => {
-    const updatedPages = pages.map((page) =>
-      page.path === pagePath
-        ? { ...page, showInHeader: !page.showInHeader }
-        : page
-    )
+  const handleFormSubmit = async () => {
+    if (!pageForm.name || !pageForm.path) {
+      setMessage('Please fill in all required fields')
+      return
+    }
+
+    // Ensure path starts with /
+    const path = pageForm.path.startsWith('/') ? pageForm.path : `/${pageForm.path}`
+    
+    // Check for duplicate paths (except when editing the same page)
+    if (!editingPage && pages.some(page => page.path === path)) {
+      setMessage('A page with this path already exists')
+      return
+    }
+
+    let updatedPages: Page[]
+    if (editingPage) {
+      // Update existing page
+      updatedPages = pages.map(page => 
+        page.path === editingPage ? { ...pageForm, path } : page
+      )
+    } else {
+      // Add new page
+      updatedPages = [...pages, { ...pageForm, path }]
+    }
+
     await updatePages(updatedPages)
+    setIsFormOpen(false)
+    setEditingPage(null)
+    setPageForm(defaultPageForm)
+  }
+
+  const handleEditPage = (page: Page) => {
+    setPageForm({
+      name: page.name,
+      path: page.path,
+      access: page.access || 'public',
+      showInHeader: page.showInHeader
+    })
+    setEditingPage(page.path)
+    setIsFormOpen(true)
+  }
+
+  const handleDeletePage = async (pagePath: string) => {
+    if (window.confirm('Are you sure you want to delete this page?')) {
+      const updatedPages = pages.filter(page => page.path !== pagePath)
+      await updatePages(updatedPages)
+    }
   }
 
   const updatePages = async (updatedPages: Page[]) => {
@@ -63,6 +105,17 @@ export default function Pages() {
       if (response.ok) {
         setPages(updatedPages)
         setMessage('Navigation updated successfully')
+        
+        // Force revalidation of navigation data
+        await fetch('/api/navigation', {
+          method: 'GET',
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
+        })
+        
         setTimeout(() => setMessage(''), 3000)
       } else {
         throw new Error('Failed to update navigation')
@@ -73,27 +126,6 @@ export default function Pages() {
     }
   }
 
-  const handleAddPage = async () => {
-    if (!newPage.name || !newPage.path) {
-      setMessage('Please fill in all required fields')
-      return
-    }
-
-    // Ensure path starts with /
-    const path = newPage.path.startsWith('/') ? newPage.path : `/${newPage.path}`
-    
-    // Check for duplicate paths
-    if (pages.some(page => page.path === path)) {
-      setMessage('A page with this path already exists')
-      return
-    }
-
-    const updatedPages = [...pages, { ...newPage, path }]
-    await updatePages(updatedPages)
-    setIsAddingPage(false)
-    setNewPage(defaultNewPage)
-  }
-
   return (
     <main className="min-h-screen bg-gray-900 py-12">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -101,10 +133,14 @@ export default function Pages() {
         <div className="mb-8 flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold text-white">Site Pages</h1>
-            <p className="mt-2 text-gray-400">Manage which pages appear in your site's navigation.</p>
+            <p className="mt-2 text-gray-400">Manage your site's pages and navigation.</p>
           </div>
           <button
-            onClick={() => setIsAddingPage(true)}
+            onClick={() => {
+              setIsFormOpen(true)
+              setEditingPage(null)
+              setPageForm(defaultPageForm)
+            }}
             className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
           >
             Add New Page
@@ -122,15 +158,18 @@ export default function Pages() {
           </div>
         )}
 
-        {/* Add New Page Form */}
-        {isAddingPage && (
+        {/* Page Form */}
+        {isFormOpen && (
           <div className="mb-8 bg-gray-800 rounded-lg p-6 border border-gray-700">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold text-white">Add New Page</h2>
+              <h2 className="text-xl font-semibold text-white">
+                {editingPage ? 'Edit Page' : 'Add New Page'}
+              </h2>
               <button
                 onClick={() => {
-                  setIsAddingPage(false)
-                  setNewPage(defaultNewPage)
+                  setIsFormOpen(false)
+                  setEditingPage(null)
+                  setPageForm(defaultPageForm)
                 }}
                 className="text-gray-400 hover:text-white"
               >
@@ -142,8 +181,8 @@ export default function Pages() {
                 <label className="block text-gray-300 mb-2">Page Name</label>
                 <input
                   type="text"
-                  value={newPage.name}
-                  onChange={(e) => setNewPage({ ...newPage, name: e.target.value })}
+                  value={pageForm.name}
+                  onChange={(e) => setPageForm({ ...pageForm, name: e.target.value })}
                   className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:border-blue-500"
                   placeholder="Home"
                 />
@@ -152,8 +191,8 @@ export default function Pages() {
                 <label className="block text-gray-300 mb-2">Path</label>
                 <input
                   type="text"
-                  value={newPage.path}
-                  onChange={(e) => setNewPage({ ...newPage, path: e.target.value })}
+                  value={pageForm.path}
+                  onChange={(e) => setPageForm({ ...pageForm, path: e.target.value })}
                   className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:border-blue-500"
                   placeholder="/home"
                 />
@@ -161,8 +200,8 @@ export default function Pages() {
               <div>
                 <label className="block text-gray-300 mb-2">Access Level</label>
                 <select
-                  value={newPage.access}
-                  onChange={(e) => setNewPage({ ...newPage, access: e.target.value as 'public' | 'protected' })}
+                  value={pageForm.access}
+                  onChange={(e) => setPageForm({ ...pageForm, access: e.target.value as 'public' | 'protected' })}
                   className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:border-blue-500"
                 >
                   <option value="public">Public</option>
@@ -173,8 +212,8 @@ export default function Pages() {
                 <input
                   type="checkbox"
                   id="showInHeader"
-                  checked={newPage.showInHeader}
-                  onChange={(e) => setNewPage({ ...newPage, showInHeader: e.target.checked })}
+                  checked={pageForm.showInHeader}
+                  onChange={(e) => setPageForm({ ...pageForm, showInHeader: e.target.checked })}
                   className="mr-2"
                 />
                 <label htmlFor="showInHeader" className="text-gray-300">
@@ -182,10 +221,10 @@ export default function Pages() {
                 </label>
               </div>
               <button
-                onClick={handleAddPage}
+                onClick={handleFormSubmit}
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
               >
-                Add Page
+                {editingPage ? 'Update Page' : 'Add Page'}
               </button>
             </div>
           </div>
@@ -194,11 +233,12 @@ export default function Pages() {
         {/* Pages Table */}
         <div className="bg-gray-800 rounded-lg shadow-xl overflow-hidden mb-8 border border-gray-700">
           {/* Table Header */}
-          <div className="grid grid-cols-4 gap-4 p-4 bg-gray-700 text-gray-200 font-medium">
+          <div className="grid grid-cols-5 gap-4 p-4 bg-gray-700 text-gray-200 font-medium">
             <span>Page Name</span>
             <span>Path</span>
             <span>Access</span>
             <span>Show in Header</span>
+            <span>Actions</span>
           </div>
 
           {/* Table Body */}
@@ -206,7 +246,7 @@ export default function Pages() {
             {pages.map((page) => (
               <div
                 key={page.path}
-                className="grid grid-cols-4 gap-4 p-4 items-center hover:bg-gray-700/50 transition-colors"
+                className="grid grid-cols-5 gap-4 p-4 items-center hover:bg-gray-700/50 transition-colors"
               >
                 <span className="text-white font-medium">{page.name}</span>
                 <span className="text-gray-400 font-mono text-sm">{page.path}</span>
@@ -215,7 +255,7 @@ export default function Pages() {
                     ? 'bg-yellow-900/50 text-yellow-400 border border-yellow-700'
                     : 'bg-green-900/50 text-green-400 border border-green-700'
                 }`}>
-                  {page.access}
+                  {page.access || 'public'}
                 </span>
                 <div>
                   <label className="relative inline-flex items-center cursor-pointer">
@@ -223,7 +263,14 @@ export default function Pages() {
                       type="checkbox"
                       className="sr-only peer"
                       checked={page.showInHeader}
-                      onChange={() => toggleHeaderVisibility(page.path)}
+                      onChange={() => {
+                        const updatedPages = pages.map((p) =>
+                          p.path === page.path
+                            ? { ...p, showInHeader: !p.showInHeader }
+                            : p
+                        )
+                        updatePages(updatedPages)
+                      }}
                     />
                     <div className="w-11 h-6 bg-gray-700 rounded-full peer 
                       peer-focus:ring-4 peer-focus:ring-blue-800 
@@ -233,6 +280,20 @@ export default function Pages() {
                       after:transition-all after:border-gray-600 after:border">
                     </div>
                   </label>
+                </div>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => handleEditPage(page)}
+                    className="px-3 py-1 text-sm bg-blue-600/50 text-blue-300 border border-blue-700 rounded hover:bg-blue-600 hover:text-white transition-colors"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDeletePage(page.path)}
+                    className="px-3 py-1 text-sm bg-red-900/50 text-red-300 border border-red-700 rounded hover:bg-red-600 hover:text-white transition-colors"
+                  >
+                    Delete
+                  </button>
                 </div>
               </div>
             ))}
