@@ -30,6 +30,12 @@
       "path": "/admin",
       "access": "protected",
       "showInHeader": true
+    },
+    {
+      "name": "Pages",
+      "path": "/pages",
+      "access": "protected",
+      "showInHeader": true
     }
   ]
 }

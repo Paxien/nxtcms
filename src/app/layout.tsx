@@ -66,20 +66,22 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head />
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-900 text-gray-100`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-900 text-gray-100 min-h-screen`}
       >
         <ThemeProvider defaultTheme="dark" storageKey="theme">
           <AuthProvider>
-            <div className="flex min-h-screen flex-col">
-              <Header />
+            <Header />
+            <div className="flex min-h-[calc(100vh-4rem)]">
               <LeftSidebar />
+              <div className="flex-1 flex flex-col pt-16 pl-64 pr-64">
+                <main className="flex-1">
+                  <div className="mx-auto max-w-7xl">
+                    {children}
+                  </div>
+                </main>
+                <Footer />
+              </div>
               <RightSidebar />
-              <main className="min-h-screen pt-16 pl-64 pr-64">
-                <div className="mx-auto max-w-7xl">
-                  {children}
-                </div>
-              </main>
-              <Footer />
             </div>
           </AuthProvider>
         </ThemeProvider>
