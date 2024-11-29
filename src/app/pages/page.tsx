@@ -67,6 +67,7 @@ export default function Pages() {
       return
     }
 
+    // Construct the full path including folder but without /pages prefix
     let fullPath = pageForm.path
     if (pageForm.folder) {
       const formattedFolder = pageForm.folder
@@ -103,13 +104,16 @@ export default function Pages() {
         throw new Error('Failed to create page file')
       }
 
+      // Add /pages prefix to the navigation path
+      const navPath = `/pages${fullPath}`
+      
       let updatedPages: Page[]
       if (editingPage) {
         updatedPages = pages.map(page => 
-          page.path === editingPage ? { ...pageForm, path: fullPath } : page
+          page.path === editingPage ? { ...pageForm, path: navPath } : page
         )
       } else {
-        updatedPages = [...pages, { ...pageForm, path: fullPath }]
+        updatedPages = [...pages, { ...pageForm, path: navPath }]
       }
 
       await updatePages(updatedPages)
