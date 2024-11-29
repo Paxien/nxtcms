@@ -3,6 +3,7 @@ import { loginSchema } from '@/lib/validations/auth'
 import { signToken } from '@/lib/auth'
 import { verifyPassword } from '@/lib/crypto'
 import { rateLimit } from '@/lib/rate-limit'
+import { getUser } from '@/lib/storage'
 
 const limiter = rateLimit({
   interval: 60 * 1000, // 1 minute
@@ -17,19 +18,17 @@ export async function POST(request: Request) {
     const body = await request.json()
     const validatedData = loginSchema.parse(body)
 
-    // Get credentials from environment variables
-    const storedUsername = process.env.AUTH_USERNAME
-    const storedPassword = process.env.AUTH_PASSWORD
-
-    if (!storedUsername || !storedPassword) {
+    // Get stored user data
+    const userData = await getUser()
+    if (!userData) {
       return NextResponse.json(
-        { message: 'Authentication not configured' },
-        { status: 500 }
+        { message: 'No user registered' },
+        { status: 401 }
       )
     }
 
     // Check username
-    if (validatedData.username !== storedUsername) {
+    if (validatedData.username !== userData.username) {
       return NextResponse.json(
         { message: 'Invalid username or password' },
         { status: 401 }
@@ -37,7 +36,7 @@ export async function POST(request: Request) {
     }
 
     // Verify password
-    const isValid = await verifyPassword(validatedData.password, storedPassword)
+    const isValid = await verifyPassword(validatedData.password, userData.password)
     if (!isValid) {
       return NextResponse.json(
         { message: 'Invalid username or password' },
@@ -47,16 +46,16 @@ export async function POST(request: Request) {
 
     // Generate JWT token
     const token = await signToken({
-      sub: '1', // Since we only have one user
-      username: storedUsername,
+      sub: '1',
+      username: userData.username,
       role: 'user',
     })
 
-    // Set the token in cookies
+    // Set the token in cookies and return response
     const response = NextResponse.json({
       user: {
         id: '1',
-        username: storedUsername,
+        username: userData.username,
         role: 'user',
       },
     })
@@ -71,14 +70,12 @@ export async function POST(request: Request) {
     return response
   } catch (error) {
     console.error('Login error:', error)
-
     if (error instanceof Error) {
       return NextResponse.json(
         { message: error.message },
         { status: 400 }
       )
     }
-
     return NextResponse.json(
       { message: 'Internal server error' },
       { status: 500 }
