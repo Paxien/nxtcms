@@ -21,7 +21,7 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get, api) => ({
       token: null,
       user: null,
       isLoading: false,
@@ -34,7 +34,7 @@ export const useAuthStore = create<AuthState>()(
         }, 0)
       },
       logout: async () => {
-        set({ isLoading: true })
+        set({ isLoading: true, error: null })
         try {
           const response = await fetch('/api/auth/logout', {
             method: 'POST',
@@ -49,11 +49,33 @@ export const useAuthStore = create<AuthState>()(
             throw new Error(data.error || 'Logout failed')
           }
           
-          set({ token: null, user: null, error: null, isLoading: false })
+          // Completely reset and clear persisted state
+          api.setState({ 
+            token: null, 
+            user: null, 
+            isLoading: false, 
+            error: null 
+          })
+          
+          // Destroy the entire persisted storage
+          api.destroy()
+
+          // Redirect to home or login page
+          window.location.href = '/'
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : 'Logout failed'
-          set({ error: errorMessage, isLoading: false })
-          throw error
+          const errorMessage = error instanceof Error 
+            ? error.message 
+            : 'Logout failed'
+          
+          // Ensure state is cleared even on error
+          api.setState({ 
+            token: null, 
+            user: null, 
+            isLoading: false, 
+            error: errorMessage 
+          })
+          
+          console.error('Logout error:', errorMessage)
         }
       },
       setLoading: (isLoading) => set({ isLoading }),
@@ -71,18 +93,28 @@ export const useAuthStore = create<AuthState>()(
             throw new Error('Not authenticated')
           }
           const data = await response.json()
-          set({ user: data.user, token: data.token || 'dummy-token', error: null })
+          set({ 
+            user: data.user, 
+            token: data.token, 
+            isLoading: false,
+            error: null 
+          })
         } catch (error) {
-          set({ user: null, token: null, error: error instanceof Error ? error.message : 'Failed to authenticate' })
-          throw error
-        } finally {
-          set({ isLoading: false })
+          set({ 
+            user: null, 
+            token: null, 
+            isLoading: false,
+            error: 'Authentication failed' 
+          })
         }
       },
     }),
     {
       name: 'auth-storage',
-      partialize: (state) => ({ token: state.token, user: state.user }),
+      partialize: (state) => ({
+        token: state.token,
+        user: state.user,
+      }),
     }
   )
 )

@@ -39,7 +39,20 @@ export async function middleware(request: NextRequest) {
   const session = await getSession(request)
   if (!session) {
     const response = NextResponse.redirect(new URL('/login', request.url))
-    response.cookies.delete('auth-token')
+    
+    // Aggressively clear all potential authentication cookies
+    const cookiesToClear = ['auth-token', 'user', 'session', 'token']
+    cookiesToClear.forEach(cookieName => {
+      response.cookies.delete(cookieName)
+      response.cookies.set(cookieName, '', { 
+        expires: new Date(0),
+        path: '/',
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax'
+      })
+    })
+
     return response
   }
 
