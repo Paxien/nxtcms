@@ -2,8 +2,8 @@ import { GithubIcon, TwitterIcon } from 'lucide-react'
 
 export function Footer() {
   return (
-    <footer className="border-t border-gray-800 mt-auto bg-gray-900/50 backdrop-blur-sm">
-      <div className="py-6">
+    <footer className="w-full border-t border-gray-800 bg-gray-900/50 backdrop-blur-sm">
+      <div className="max-w-7xl mx-auto py-6">
         <div className="flex flex-col items-center gap-4">
           <div className="flex justify-between items-center w-full">
             <p className="text-sm text-gray-400">
@@ -28,7 +28,7 @@ export function Footer() {
               </a>
             </div>
           </div>
-          <div className="text-sm text-gray-400">
+          <div className="text-sm text-gray-400 text-center">
             Built with{' '}
             <a href="https://nextjs.org" className="text-gray-300 hover:text-white transition-colors">Next.js</a>,{' '}
             <a href="https://www.typescriptlang.org" className="text-gray-300 hover:text-white transition-colors">TypeScript</a>,{' '}

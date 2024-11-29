@@ -36,6 +36,26 @@
       "path": "/pages",
       "access": "protected",
       "showInHeader": true
+    },
+    {
+      "name": "Footer settings",
+      "path": "/admin/settings/footer",
+      "access": "protected",
+      "showInHeader": false
+    },
+    {
+      "name": "Sidebar Settings",
+      "path": "/admin/settings/admin/settings/sidebars",
+      "access": "protected",
+      "showInHeader": true,
+      "folder": "admin/settings"
+    },
+    {
+      "name": "hh",
+      "path": "/hh",
+      "access": "public",
+      "showInHeader": true,
+      "folder": ""
     }
   ]
 }

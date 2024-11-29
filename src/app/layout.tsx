@@ -70,18 +70,20 @@ export default function RootLayout({
       >
         <ThemeProvider defaultTheme="dark" storageKey="theme">
           <AuthProvider>
-            <Header />
-            <div className="flex min-h-[calc(100vh-4rem)]">
-              <LeftSidebar />
-              <div className="flex-1 flex flex-col pt-16 pl-64 pr-64">
-                <main className="flex-1">
-                  <div className="mx-auto max-w-7xl">
-                    {children}
-                  </div>
-                </main>
-                <Footer />
+            <div className="flex flex-col min-h-screen">
+              <Header />
+              <div className="flex flex-1">
+                <LeftSidebar />
+                <div className="flex-1 flex flex-col pt-16 pl-64 pr-64">
+                  <main className="flex-1">
+                    <div className="mx-auto max-w-7xl">
+                      {children}
+                    </div>
+                  </main>
+                  <Footer />
+                </div>
+                <RightSidebar />
               </div>
-              <RightSidebar />
             </div>
           </AuthProvider>
         </ThemeProvider>

@@ -15,13 +15,15 @@ interface PageFormData {
   path: string
   access: 'public' | 'protected'
   showInHeader: boolean
+  folder: string 
 }
 
 const defaultPageForm: PageFormData = {
   name: '',
   path: '',
   access: 'public',
-  showInHeader: true
+  showInHeader: true,
+  folder: '' 
 }
 
 export default function Pages() {
@@ -30,10 +32,15 @@ export default function Pages() {
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingPage, setEditingPage] = useState<string | null>(null)
   const [pageForm, setPageForm] = useState<PageFormData>(defaultPageForm)
+  const [folders, setFolders] = useState<string[]>([]) 
 
   useEffect(() => {
     loadPages()
   }, [])
+
+  useEffect(() => {
+    loadFolders()
+  }, [pages])
 
   const loadPages = () => {
     fetch('/api/navigation')
@@ -42,42 +49,88 @@ export default function Pages() {
       .catch((error) => console.error('Error loading navigation:', error))
   }
 
+  const loadFolders = () => {
+    const uniqueFolders = new Set(
+      pages
+        .map(page => {
+          const pathParts = page.path.split('/')
+          return pathParts.length > 2 ? pathParts.slice(1, -1).join('/') : ''
+        })
+        .filter(Boolean)
+    )
+    setFolders(Array.from(uniqueFolders))
+  }
+
   const handleFormSubmit = async () => {
     if (!pageForm.name || !pageForm.path) {
       setMessage('Please fill in all required fields')
       return
     }
 
-    // Ensure path starts with /
-    const path = pageForm.path.startsWith('/') ? pageForm.path : `/${pageForm.path}`
+    let fullPath = pageForm.path
+    if (pageForm.folder) {
+      const formattedFolder = pageForm.folder
+        .split('/')
+        .filter(Boolean)
+        .join('/')
+      fullPath = `/${formattedFolder}/${pageForm.path.replace(/^\/+/, '')}`
+    } else {
+      fullPath = fullPath.startsWith('/') ? fullPath : `/${fullPath}`
+    }
     
-    // Check for duplicate paths (except when editing the same page)
-    if (!editingPage && pages.some(page => page.path === path)) {
+    if (!editingPage && pages.some(page => page.path === fullPath)) {
       setMessage('A page with this path already exists')
       return
     }
 
-    let updatedPages: Page[]
-    if (editingPage) {
-      // Update existing page
-      updatedPages = pages.map(page => 
-        page.path === editingPage ? { ...pageForm, path } : page
-      )
-    } else {
-      // Add new page
-      updatedPages = [...pages, { ...pageForm, path }]
-    }
+    // Create the page file and folder structure
+    try {
+      const response = await fetch('/api/pages/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: pageForm.name,
+          path: fullPath,
+          folder: pageForm.folder,
+          access: pageForm.access,
+          showInHeader: pageForm.showInHeader,
+        }),
+      })
 
-    await updatePages(updatedPages)
-    setIsFormOpen(false)
-    setEditingPage(null)
-    setPageForm(defaultPageForm)
+      if (!response.ok) {
+        throw new Error('Failed to create page file')
+      }
+
+      let updatedPages: Page[]
+      if (editingPage) {
+        updatedPages = pages.map(page => 
+          page.path === editingPage ? { ...pageForm, path: fullPath } : page
+        )
+      } else {
+        updatedPages = [...pages, { ...pageForm, path: fullPath }]
+      }
+
+      await updatePages(updatedPages)
+      setIsFormOpen(false)
+      setEditingPage(null)
+      setPageForm(defaultPageForm)
+    } catch (error) {
+      console.error('Error creating page:', error)
+      setMessage('Failed to create page file and folder structure')
+    }
   }
 
   const handleEditPage = (page: Page) => {
+    const pathParts = page.path.split('/')
+    const pagePath = pathParts.pop() || '' 
+    const folder = pathParts.slice(1).join('/') 
+
     setPageForm({
       name: page.name,
-      path: page.path,
+      path: pagePath,
+      folder: folder,
       access: page.access || 'public',
       showInHeader: page.showInHeader
     })
@@ -106,7 +159,6 @@ export default function Pages() {
         setPages(updatedPages)
         setMessage('Navigation updated successfully')
         
-        // Force revalidation of navigation data
         await fetch('/api/navigation', {
           method: 'GET',
           cache: 'no-store',
@@ -129,7 +181,6 @@ export default function Pages() {
   return (
     <main className="min-h-screen bg-gray-900 py-12">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Page Header */}
         <div className="mb-8 flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold text-white">Site Pages</h1>
@@ -147,7 +198,6 @@ export default function Pages() {
           </button>
         </div>
         
-        {/* Status Message */}
         {message && (
           <div className={`p-4 rounded-md mb-6 border ${
             message.includes('success')
@@ -158,7 +208,6 @@ export default function Pages() {
           </div>
         )}
 
-        {/* Page Form */}
         {isFormOpen && (
           <div className="mb-8 bg-gray-800 rounded-lg p-6 border border-gray-700">
             <div className="flex justify-between items-center mb-4">
@@ -188,14 +237,40 @@ export default function Pages() {
                 />
               </div>
               <div>
-                <label className="block text-gray-300 mb-2">Path</label>
+                <label className="block text-gray-300 mb-2">Folder (Optional)</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={pageForm.folder}
+                    onChange={(e) => setPageForm({ ...pageForm, folder: e.target.value })}
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:border-blue-500"
+                    placeholder="admin/settings"
+                    list="folders"
+                  />
+                  <datalist id="folders">
+                    {folders.map((folder, index) => (
+                      <option key={index} value={folder} />
+                    ))}
+                  </datalist>
+                </div>
+                <p className="mt-1 text-sm text-gray-400">
+                  Example: "admin/settings" for /admin/settings/your-page
+                </p>
+              </div>
+              <div>
+                <label className="block text-gray-300 mb-2">Page Path</label>
                 <input
                   type="text"
                   value={pageForm.path}
                   onChange={(e) => setPageForm({ ...pageForm, path: e.target.value })}
                   className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:border-blue-500"
-                  placeholder="/home"
+                  placeholder="footer"
                 />
+                <p className="mt-1 text-sm text-gray-400">
+                  {pageForm.folder 
+                    ? `Full path will be: /${pageForm.folder}/${pageForm.path.replace(/^\/+/, '')}`
+                    : 'Enter path without leading slash'}
+                </p>
               </div>
               <div>
                 <label className="block text-gray-300 mb-2">Access Level</label>
@@ -214,18 +289,20 @@ export default function Pages() {
                   id="showInHeader"
                   checked={pageForm.showInHeader}
                   onChange={(e) => setPageForm({ ...pageForm, showInHeader: e.target.checked })}
-                  className="mr-2"
+                  className="h-4 w-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500"
                 />
-                <label htmlFor="showInHeader" className="text-gray-300">
-                  Show in Header
+                <label htmlFor="showInHeader" className="ml-2 text-gray-300">
+                  Show in Header Navigation
                 </label>
               </div>
-              <button
-                onClick={handleFormSubmit}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-              >
-                {editingPage ? 'Update Page' : 'Add Page'}
-              </button>
+              <div className="mt-4">
+                <button
+                  onClick={handleFormSubmit}
+                  className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                >
+                  {editingPage ? 'Update Page' : 'Create Page'}
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -233,8 +310,9 @@ export default function Pages() {
         {/* Pages Table */}
         <div className="bg-gray-800 rounded-lg shadow-xl overflow-hidden mb-8 border border-gray-700">
           {/* Table Header */}
-          <div className="grid grid-cols-5 gap-4 p-4 bg-gray-700 text-gray-200 font-medium">
+          <div className="grid grid-cols-6 gap-4 p-4 bg-gray-700 text-gray-200 font-medium">
             <span>Page Name</span>
+            <span>Folder</span>
             <span>Path</span>
             <span>Access</span>
             <span>Show in Header</span>
@@ -243,60 +321,67 @@ export default function Pages() {
 
           {/* Table Body */}
           <div className="divide-y divide-gray-700">
-            {pages.map((page) => (
-              <div
-                key={page.path}
-                className="grid grid-cols-5 gap-4 p-4 items-center hover:bg-gray-700/50 transition-colors"
-              >
-                <span className="text-white font-medium">{page.name}</span>
-                <span className="text-gray-400 font-mono text-sm">{page.path}</span>
-                <span className={`inline-flex px-3 py-1 text-sm rounded-full font-medium ${
-                  page.access === 'protected'
-                    ? 'bg-yellow-900/50 text-yellow-400 border border-yellow-700'
-                    : 'bg-green-900/50 text-green-400 border border-green-700'
-                }`}>
-                  {page.access || 'public'}
-                </span>
-                <div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      className="sr-only peer"
-                      checked={page.showInHeader}
-                      onChange={() => {
-                        const updatedPages = pages.map((p) =>
-                          p.path === page.path
-                            ? { ...p, showInHeader: !p.showInHeader }
-                            : p
-                        )
-                        updatePages(updatedPages)
-                      }}
-                    />
-                    <div className="w-11 h-6 bg-gray-700 rounded-full peer 
-                      peer-focus:ring-4 peer-focus:ring-blue-800 
-                      peer-checked:after:translate-x-full peer-checked:bg-blue-600
-                      after:content-[''] after:absolute after:top-[2px] after:left-[2px] 
-                      after:bg-gray-200 after:rounded-full after:h-5 after:w-5 
-                      after:transition-all after:border-gray-600 after:border">
-                    </div>
-                  </label>
+            {pages.map((page) => {
+              const pathParts = page.path.split('/')
+              const folder = pathParts.length > 2 ? pathParts.slice(1, -1).join('/') : ''
+              return (
+                <div
+                  key={page.path}
+                  className="grid grid-cols-6 gap-4 p-4 items-center hover:bg-gray-700/50 transition-colors"
+                >
+                  <span className="text-white font-medium">{page.name}</span>
+                  <span className="text-gray-400 font-mono text-sm">
+                    {folder ? `/${folder}` : '(root)'}
+                  </span>
+                  <span className="text-gray-400 font-mono text-sm">{page.path}</span>
+                  <span className={`inline-flex px-3 py-1 text-sm rounded-full font-medium ${
+                    page.access === 'protected'
+                      ? 'bg-yellow-900/50 text-yellow-400 border border-yellow-700'
+                      : 'bg-green-900/50 text-green-400 border border-green-700'
+                  }`}>
+                    {page.access || 'public'}
+                  </span>
+                  <div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="sr-only peer"
+                        checked={page.showInHeader}
+                        onChange={() => {
+                          const updatedPages = pages.map((p) =>
+                            p.path === page.path
+                              ? { ...p, showInHeader: !p.showInHeader }
+                              : p
+                          )
+                          updatePages(updatedPages)
+                        }}
+                      />
+                      <div className="w-11 h-6 bg-gray-700 rounded-full peer 
+                        peer-focus:ring-4 peer-focus:ring-blue-800 
+                        peer-checked:after:translate-x-full peer-checked:bg-blue-600
+                        after:content-[''] after:absolute after:top-[2px] after:left-[2px] 
+                        after:bg-gray-200 after:rounded-full after:h-5 after:w-5 
+                        after:transition-all after:border-gray-600 after:border">
+                      </div>
+                    </label>
+                  </div>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => handleEditPage(page)}
+                      className="px-3 py-1 text-sm bg-blue-600/50 text-blue-300 border border-blue-700 rounded hover:bg-blue-600 hover:text-white transition-colors"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDeletePage(page.path)}
+                      className="px-3 py-1 text-sm bg-red-900/50 text-red-300 border border-red-700 rounded hover:bg-red-600 hover:text-white transition-colors"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => handleEditPage(page)}
-                    className="px-3 py-1 text-sm bg-blue-600/50 text-blue-300 border border-blue-700 rounded hover:bg-blue-600 hover:text-white transition-colors"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDeletePage(page.path)}
-                    className="px-3 py-1 text-sm bg-red-900/50 text-red-300 border border-red-700 rounded hover:bg-red-600 hover:text-white transition-colors"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
 
