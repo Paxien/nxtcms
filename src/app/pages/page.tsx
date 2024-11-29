@@ -10,16 +10,36 @@ interface Page {
   showInHeader: boolean
 }
 
+interface NewPage {
+  name: string
+  path: string
+  access: 'public' | 'protected'
+  showInHeader: boolean
+}
+
+const defaultNewPage: NewPage = {
+  name: '',
+  path: '',
+  access: 'public',
+  showInHeader: true
+}
+
 export default function Pages() {
   const [pages, setPages] = useState<Page[]>([])
   const [message, setMessage] = useState<string>('')
+  const [isAddingPage, setIsAddingPage] = useState(false)
+  const [newPage, setNewPage] = useState<NewPage>(defaultNewPage)
 
   useEffect(() => {
+    loadPages()
+  }, [])
+
+  const loadPages = () => {
     fetch('/api/navigation')
       .then((res) => res.json())
       .then((data) => setPages(data.headerLinks))
       .catch((error) => console.error('Error loading navigation:', error))
-  }, [])
+  }
 
   const toggleHeaderVisibility = async (pagePath: string) => {
     const updatedPages = pages.map((page) =>
@@ -27,8 +47,10 @@ export default function Pages() {
         ? { ...page, showInHeader: !page.showInHeader }
         : page
     )
-    setPages(updatedPages)
+    await updatePages(updatedPages)
+  }
 
+  const updatePages = async (updatedPages: Page[]) => {
     try {
       const response = await fetch('/api/navigation', {
         method: 'POST',
@@ -39,24 +61,54 @@ export default function Pages() {
       })
 
       if (response.ok) {
-        setMessage('Header navigation updated successfully')
+        setPages(updatedPages)
+        setMessage('Navigation updated successfully')
         setTimeout(() => setMessage(''), 3000)
       } else {
         throw new Error('Failed to update navigation')
       }
     } catch (error) {
-      setMessage('Failed to update header navigation')
+      setMessage('Failed to update navigation')
       setTimeout(() => setMessage(''), 3000)
     }
+  }
+
+  const handleAddPage = async () => {
+    if (!newPage.name || !newPage.path) {
+      setMessage('Please fill in all required fields')
+      return
+    }
+
+    // Ensure path starts with /
+    const path = newPage.path.startsWith('/') ? newPage.path : `/${newPage.path}`
+    
+    // Check for duplicate paths
+    if (pages.some(page => page.path === path)) {
+      setMessage('A page with this path already exists')
+      return
+    }
+
+    const updatedPages = [...pages, { ...newPage, path }]
+    await updatePages(updatedPages)
+    setIsAddingPage(false)
+    setNewPage(defaultNewPage)
   }
 
   return (
     <main className="min-h-screen bg-gray-900 py-12">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Page Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white">Site Pages</h1>
-          <p className="mt-2 text-gray-400">Manage which pages appear in your site's navigation.</p>
+        <div className="mb-8 flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-white">Site Pages</h1>
+            <p className="mt-2 text-gray-400">Manage which pages appear in your site's navigation.</p>
+          </div>
+          <button
+            onClick={() => setIsAddingPage(true)}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+          >
+            Add New Page
+          </button>
         </div>
         
         {/* Status Message */}
@@ -67,6 +119,75 @@ export default function Pages() {
               : 'bg-red-900/50 text-red-400 border-red-700'
           }`}>
             {message}
+          </div>
+        )}
+
+        {/* Add New Page Form */}
+        {isAddingPage && (
+          <div className="mb-8 bg-gray-800 rounded-lg p-6 border border-gray-700">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold text-white">Add New Page</h2>
+              <button
+                onClick={() => {
+                  setIsAddingPage(false)
+                  setNewPage(defaultNewPage)
+                }}
+                className="text-gray-400 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="grid gap-4">
+              <div>
+                <label className="block text-gray-300 mb-2">Page Name</label>
+                <input
+                  type="text"
+                  value={newPage.name}
+                  onChange={(e) => setNewPage({ ...newPage, name: e.target.value })}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:border-blue-500"
+                  placeholder="Home"
+                />
+              </div>
+              <div>
+                <label className="block text-gray-300 mb-2">Path</label>
+                <input
+                  type="text"
+                  value={newPage.path}
+                  onChange={(e) => setNewPage({ ...newPage, path: e.target.value })}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:border-blue-500"
+                  placeholder="/home"
+                />
+              </div>
+              <div>
+                <label className="block text-gray-300 mb-2">Access Level</label>
+                <select
+                  value={newPage.access}
+                  onChange={(e) => setNewPage({ ...newPage, access: e.target.value as 'public' | 'protected' })}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:border-blue-500"
+                >
+                  <option value="public">Public</option>
+                  <option value="protected">Protected</option>
+                </select>
+              </div>
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="showInHeader"
+                  checked={newPage.showInHeader}
+                  onChange={(e) => setNewPage({ ...newPage, showInHeader: e.target.checked })}
+                  className="mr-2"
+                />
+                <label htmlFor="showInHeader" className="text-gray-300">
+                  Show in Header
+                </label>
+              </div>
+              <button
+                onClick={handleAddPage}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              >
+                Add Page
+              </button>
+            </div>
           </div>
         )}
 

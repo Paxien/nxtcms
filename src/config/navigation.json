@@ -1,9 +1,35 @@
 {
   "headerLinks": [
-    { "name": "Home", "path": "/", "showInHeader": true },
-    { "name": "Login", "path": "/login", "showInHeader": true },
-    { "name": "Sign Up", "path": "/signup", "showInHeader": true },
-    { "name": "Profile", "path": "/profile", "showInHeader": false },
-    { "name": "Contact", "path": "/contact", "showInHeader": true }
+    {
+      "name": "Home",
+      "path": "/",
+      "showInHeader": true
+    },
+    {
+      "name": "Login",
+      "path": "/login",
+      "showInHeader": true
+    },
+    {
+      "name": "Sign Up",
+      "path": "/signup",
+      "showInHeader": true
+    },
+    {
+      "name": "Profile",
+      "path": "/profile",
+      "showInHeader": false
+    },
+    {
+      "name": "Contact",
+      "path": "/contact",
+      "showInHeader": true
+    },
+    {
+      "name": "Admin",
+      "path": "/admin",
+      "access": "protected",
+      "showInHeader": true
+    }
   ]
 }

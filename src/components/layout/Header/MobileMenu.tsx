@@ -5,14 +5,20 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Dialog, Transition } from '@headlessui/react'
 import { XMarkIcon } from '@heroicons/react/24/outline'
-import { navigationItems } from './constants'
-import { NavigationItem } from './types'
+import { User } from '@/types/auth'
+
+interface NavigationItem {
+  name: string
+  path: string
+  showInHeader: boolean
+  access?: 'public' | 'protected'
+}
 
 interface MobileMenuProps {
   isOpen: boolean
   onCloseAction: () => void
   navigation: NavigationItem[]
-  user: { username: string } | null
+  user: User | null
   onLogoutAction: () => Promise<void>
 }
 
@@ -61,19 +67,19 @@ export function MobileMenu({
           <div className="mt-6 flow-root">
             <div className="-my-6 divide-y divide-gray-700">
               <div className="space-y-2 py-6">
-                {navigationItems.map((item) => (
+                {navigation.map((item) => (
                   <Link
-                    key={item.href}
-                    href={item.href}
+                    key={item.path}
+                    href={item.path}
                     className={classNames(
-                      pathname === item.href
+                      pathname === item.path
                         ? 'bg-gray-800 text-white'
                         : 'text-gray-300 hover:bg-gray-800 hover:text-white',
                       '-mx-3 block rounded-lg px-3 py-2 text-base font-semibold'
                     )}
                     onClick={onCloseAction}
                   >
-                    {item.label}
+                    {item.name}
                   </Link>
                 ))}
               </div>

@@ -1,13 +1,19 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Bars3Icon, MagnifyingGlassIcon } from '@heroicons/react/24/outline'
 import { useAuthStore } from '@/store/useAuthStore'
-import { navigationItems } from './constants'
 import { UserMenu } from './UserMenu'
 import { MobileMenu } from './MobileMenu'
+
+interface NavigationItem {
+  name: string
+  path: string
+  showInHeader: boolean
+  access?: 'public' | 'protected'
+}
 
 function classNames(...classes: string[]) {
   return classes.filter(Boolean).join(' ')
@@ -15,8 +21,25 @@ function classNames(...classes: string[]) {
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [navigationItems, setNavigationItems] = useState<NavigationItem[]>([])
   const pathname = usePathname()
   const { user, logout, isLoading } = useAuthStore()
+
+  useEffect(() => {
+    loadNavigation()
+  }, [])
+
+  const loadNavigation = async () => {
+    try {
+      const response = await fetch('/api/navigation')
+      if (response.ok) {
+        const data = await response.json()
+        setNavigationItems(data.headerLinks)
+      }
+    } catch (error) {
+      console.error('Failed to load navigation:', error)
+    }
+  }
 
   const handleLogoutAction = async () => {
     try {
@@ -29,6 +52,12 @@ export function Header() {
   const handleCloseMenuAction = () => {
     setMobileMenuOpen(false)
   }
+
+  const visibleItems = navigationItems.filter(item => {
+    if (!item.showInHeader) return false
+    if (item.access === 'protected' && !user) return false
+    return true
+  })
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 border-b border-gray-800 bg-gray-900/95 backdrop-blur supports-[backdrop-filter]:bg-gray-900/75">
@@ -43,18 +72,18 @@ export function Header() {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex md:flex-1 md:items-center md:justify-center md:space-x-8">
-            {navigationItems.map((item) => (
+            {visibleItems.map((item) => (
               <Link
-                key={item.href}
-                href={item.href}
+                key={item.path}
+                href={item.path}
                 className={classNames(
-                  pathname === item.href
+                  pathname === item.path
                     ? 'text-white'
                     : 'text-gray-300 hover:text-white',
                   'text-sm font-medium transition-colors duration-200'
                 )}
               >
-                {item.label}
+                {item.name}
               </Link>
             ))}
           </nav>
@@ -145,7 +174,7 @@ export function Header() {
       <MobileMenu
         isOpen={mobileMenuOpen}
         onCloseAction={handleCloseMenuAction}
-        navigation={navigationItems}
+        navigation={visibleItems}
         user={user}
         onLogoutAction={handleLogoutAction}
       />
