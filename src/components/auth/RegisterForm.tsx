@@ -6,40 +6,53 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { registerSchema } from '@/lib/validations/auth'
-import { useAuth } from '@/hooks/useAuth'
 import { Form } from '@/components/forms/Form'
 import { FormField } from '@/components/forms/FormField'
 
 type RegisterData = {
-  name: string
-  email: string
+  username: string
   password: string
   confirmPassword: string
 }
 
 export function RegisterForm() {
   const router = useRouter()
-  const { handleRegister } = useAuth()
   const [error, setError] = useState<string | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const form = useForm<RegisterData>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
-      name: '',
-      email: '',
+      username: '',
       password: '',
       confirmPassword: '',
     },
   })
 
-  const { isSubmitting } = form.formState
-
   async function onSubmit(data: RegisterData) {
     try {
-      await handleRegister(data)
-      router.push('/dashboard')
+      setIsSubmitting(true)
+      setError(null)
+
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.message || 'Failed to register')
+      }
+
+      // After successful registration, redirect to profile page
+      router.push('/profile')
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to register')
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -48,23 +61,16 @@ export function RegisterForm() {
       <div className="text-center space-y-2">
         <h1 className="text-2xl font-bold">Create an account</h1>
         <p className="text-gray-500">
-          Enter your information to create your account
+          Enter your details to create your account
         </p>
       </div>
 
       <Form form={form} onSubmit={onSubmit} className="space-y-4">
         <FormField
-          name="name"
-          label="Name"
-          placeholder="John Doe"
-          disabled={isSubmitting}
-        />
-
-        <FormField
-          name="email"
-          label="Email"
-          type="email"
-          placeholder="you@example.com"
+          name="username"
+          label="Username"
+          type="text"
+          placeholder="Choose a username"
           disabled={isSubmitting}
         />
 

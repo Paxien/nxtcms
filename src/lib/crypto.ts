@@ -1,7 +1,7 @@
-import { hash, compare } from 'bcryptjs'
+import { compare, hash } from 'bcryptjs'
 
 export async function hashPassword(password: string): Promise<string> {
-  return hash(password, 12)
+  return hash(password, 10)
 }
 
 export async function verifyPassword(

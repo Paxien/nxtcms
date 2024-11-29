@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server'
 import { registerSchema } from '@/lib/validations/auth'
 import { signToken } from '@/lib/auth'
 import { hashPassword } from '@/lib/crypto'
-import { db } from '@/lib/db'
 import { rateLimit } from '@/lib/rate-limit'
 
 const limiter = rateLimit({
@@ -18,46 +17,28 @@ export async function POST(request: Request) {
     const body = await request.json()
     const validatedData = registerSchema.parse(body)
 
-    // Check if email already exists
-    const existingUser = await db.user.findUnique({
-      where: { email: validatedData.email },
-    })
-
-    if (existingUser) {
-      return NextResponse.json(
-        { message: 'Email already registered' },
-        { status: 400 }
-      )
-    }
-
-    // Hash password
+    // Hash the password
     const hashedPassword = await hashPassword(validatedData.password)
 
-    // Create user
-    const user = await db.user.create({
-      data: {
-        email: validatedData.email,
-        name: validatedData.name,
-        password: hashedPassword,
-        role: 'user',
-      },
-    })
+    // In a real application, you would want to use a more secure way to update environment variables
+    // This is just for demonstration purposes
+    process.env.AUTH_USERNAME = validatedData.username
+    process.env.AUTH_PASSWORD = hashedPassword
 
     // Generate JWT token
     const token = await signToken({
-      sub: user.id,
-      email: user.email,
-      role: user.role,
+      sub: '1',
+      username: validatedData.username,
+      role: 'user',
     })
 
     // Return user data and token
     return NextResponse.json({
       token,
       user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
+        id: '1',
+        username: validatedData.username,
+        role: 'user',
       },
     })
   } catch (error) {

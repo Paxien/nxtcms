@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server'
 import { loginSchema } from '@/lib/validations/auth'
 import { signToken } from '@/lib/auth'
 import { verifyPassword } from '@/lib/crypto'
-import { db } from '@/lib/db'
 import { rateLimit } from '@/lib/rate-limit'
 
 const limiter = rateLimit({
@@ -18,44 +17,58 @@ export async function POST(request: Request) {
     const body = await request.json()
     const validatedData = loginSchema.parse(body)
 
-    // Find user by email
-    const user = await db.user.findUnique({
-      where: { email: validatedData.email },
-    })
+    // Get credentials from environment variables
+    const storedUsername = process.env.AUTH_USERNAME
+    const storedPassword = process.env.AUTH_PASSWORD
 
-    if (!user) {
+    if (!storedUsername || !storedPassword) {
       return NextResponse.json(
-        { message: 'Invalid email or password' },
+        { message: 'Authentication not configured' },
+        { status: 500 }
+      )
+    }
+
+    // Check username
+    if (validatedData.username !== storedUsername) {
+      return NextResponse.json(
+        { message: 'Invalid username or password' },
         { status: 401 }
       )
     }
 
     // Verify password
-    const isValid = await verifyPassword(validatedData.password, user.password)
+    const isValid = await verifyPassword(validatedData.password, storedPassword)
     if (!isValid) {
       return NextResponse.json(
-        { message: 'Invalid email or password' },
+        { message: 'Invalid username or password' },
         { status: 401 }
       )
     }
 
     // Generate JWT token
     const token = await signToken({
-      sub: user.id,
-      email: user.email,
-      role: user.role,
+      sub: '1', // Since we only have one user
+      username: storedUsername,
+      role: 'user',
     })
 
-    // Return user data and token
-    return NextResponse.json({
-      token,
+    // Set the token in cookies
+    const response = NextResponse.json({
       user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
+        id: '1',
+        username: storedUsername,
+        role: 'user',
       },
     })
+
+    response.cookies.set('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+    })
+
+    return response
   } catch (error) {
     console.error('Login error:', error)
 

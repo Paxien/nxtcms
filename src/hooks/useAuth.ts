@@ -6,21 +6,20 @@ import { useAuthStore } from '@/store/useAuthStore'
 import { fetchAPI } from '@/lib/api/client'
 
 interface LoginData {
-  email: string
+  username: string
   password: string
 }
 
 interface RegisterData extends LoginData {
-  name: string
+  confirmPassword: string
 }
 
 interface AuthResponse {
   token: string
   user: {
     id: string
-    email: string
+    username: string
     role: string
-    name?: string
   }
 }
 
@@ -38,7 +37,7 @@ export function useAuth() {
           body: JSON.stringify(data),
         })
         login(response.token, response.user)
-        router.push('/dashboard')
+        router.push('/profile') // Changed from /dashboard to /profile
       } catch (error) {
         setError(error instanceof Error ? error.message : 'Login failed')
       } finally {
@@ -58,7 +57,7 @@ export function useAuth() {
           body: JSON.stringify(data),
         })
         login(response.token, response.user)
-        router.push('/dashboard')
+        router.push('/profile') // Changed from /dashboard to /profile
       } catch (error) {
         setError(error instanceof Error ? error.message : 'Registration failed')
       } finally {
@@ -68,9 +67,14 @@ export function useAuth() {
     [login, router, setError, setLoading]
   )
 
-  const handleLogout = useCallback(() => {
-    logout()
-    router.push('/login')
+  const handleLogout = useCallback(async () => {
+    try {
+      await fetchAPI('/api/auth/logout', { method: 'POST' })
+      logout()
+      router.push('/login')
+    } catch (error) {
+      console.error('Logout failed:', error)
+    }
   }, [logout, router])
 
   return {

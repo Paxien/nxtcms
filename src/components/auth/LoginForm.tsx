@@ -6,36 +6,51 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { loginSchema } from '@/lib/validations/auth'
-import { useAuth } from '@/hooks/useAuth'
 import { Form } from '@/components/forms/Form'
 import { FormField } from '@/components/forms/FormField'
 
 type LoginData = {
-  email: string
+  username: string
   password: string
 }
 
 export function LoginForm() {
   const router = useRouter()
-  const { handleLogin } = useAuth()
   const [error, setError] = useState<string | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const form = useForm<LoginData>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: '',
+      username: '',
       password: '',
     },
   })
 
-  const { isSubmitting } = form.formState
-
   async function onSubmit(data: LoginData) {
     try {
-      await handleLogin(data)
-      router.push('/dashboard')
+      setIsSubmitting(true)
+      setError(null)
+
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.message || 'Failed to login')
+      }
+
+      // After successful login, redirect to profile page
+      router.push('/profile')
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to login')
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -50,10 +65,10 @@ export function LoginForm() {
 
       <Form form={form} onSubmit={onSubmit} className="space-y-4">
         <FormField
-          name="email"
-          label="Email"
-          type="email"
-          placeholder="you@example.com"
+          name="username"
+          label="Username"
+          type="text"
+          placeholder="Enter your username"
           disabled={isSubmitting}
         />
 
