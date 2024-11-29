@@ -1,11 +1,11 @@
-import type { Metadata } from 'next'
-import localFont from 'next/font/local'
+import { Footer } from '@/components/layout/Footer/index'
 import { Header } from '@/components/layout/Header'
-import { Footer } from '@/components/layout/Footer'
-import { ThemeProvider } from '@/components/providers/ThemeProvider'
-import { AuthProvider } from '@/components/providers/AuthProvider'
 import LeftSidebar from '@/components/layout/Sidebar/LeftSidebar'
 import RightSidebar from '@/components/layout/Sidebar/RightSidebar'
+import { AuthProvider } from '@/components/providers/AuthProvider'
+import { ThemeProvider } from '@/components/providers/ThemeProvider'
+import type { Metadata } from 'next'
+import localFont from 'next/font/local'
 import './globals.css'
 
 const geistSans = localFont({
