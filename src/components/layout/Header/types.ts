@@ -1,4 +1,5 @@
 export interface NavigationItem {
+  name: string
   label: string
   href: string
   icon?: React.ComponentType<{ className?: string }>

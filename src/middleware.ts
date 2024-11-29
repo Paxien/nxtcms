@@ -6,10 +6,10 @@ import { getSession } from '@/lib/auth'
 const publicPaths = [
   '/',              // Main page
   '/login',         // Login page
-  '/register',      // Register page
+  '/signup',        // Signup page
   '/api/auth',      // Auth API routes
   '/contact',       // Contact page
-  '/about',         // About page (if you have one)
+  '/about',         // About page
   '/_next',         // Next.js assets
   '/favicon.ico',   // Favicon
 ]
@@ -17,8 +17,8 @@ const publicPaths = [
 // Add paths that require authentication
 const protectedPaths = [
   '/profile',       // Profile page
-  '/dashboard',     // Dashboard (if you have one)
-  '/settings',      // Settings (if you have one)
+  '/dashboard',     // Dashboard
+  '/settings',      // Settings
 ]
 
 export async function middleware(request: NextRequest) {
@@ -39,7 +39,7 @@ export async function middleware(request: NextRequest) {
   const session = await getSession(request)
   if (!session) {
     const response = NextResponse.redirect(new URL('/login', request.url))
-    response.cookies.delete('token')
+    response.cookies.delete('auth-token')
     return response
   }
 
@@ -68,8 +68,7 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * - public folder
      */
-    '/((?!_next/static|_next/image|favicon.ico|public/).*)',
+    '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 }

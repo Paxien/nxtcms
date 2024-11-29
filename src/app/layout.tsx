@@ -68,9 +68,13 @@ export default function RootLayout({
       >
         <ThemeProvider defaultTheme="dark" storageKey="theme">
           <AuthProvider>
-            <div className="min-h-screen flex flex-col">
+            <div className="flex min-h-screen flex-col">
               <Header />
-              <main className="flex-1">{children}</main>
+              <main className="flex-1 px-4 py-16 sm:px-6 lg:px-8">
+                <div className="mx-auto max-w-7xl">
+                  {children}
+                </div>
+              </main>
               <Footer />
             </div>
           </AuthProvider>

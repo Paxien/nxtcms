@@ -3,14 +3,23 @@ import { NextResponse } from 'next/server'
 
 export async function POST() {
   try {
-    const cookieStore = cookies()
+    const cookieStore = await cookies()
     
-    // Clear the auth token cookie
-    cookieStore.delete('auth-token')
+    // Clear the auth token cookie with proper options
+    cookieStore.delete('auth-token', {
+      path: '/',
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+    })
     
     return NextResponse.json(
       { message: 'Logged out successfully' },
-      { status: 200 }
+      {
+        status: 200,
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+        },
+      }
     )
   } catch (error) {
     console.error('Logout error:', error)
