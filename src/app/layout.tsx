@@ -4,6 +4,8 @@ import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
 import { ThemeProvider } from '@/components/providers/ThemeProvider'
 import { AuthProvider } from '@/components/providers/AuthProvider'
+import LeftSidebar from '@/components/layout/Sidebar/LeftSidebar'
+import RightSidebar from '@/components/layout/Sidebar/RightSidebar'
 import './globals.css'
 
 const geistSans = localFont({
@@ -70,7 +72,9 @@ export default function RootLayout({
           <AuthProvider>
             <div className="flex min-h-screen flex-col">
               <Header />
-              <main className="flex-1 px-4 py-16 sm:px-6 lg:px-8">
+              <LeftSidebar />
+              <RightSidebar />
+              <main className="min-h-screen pt-16 pl-64 pr-64">
                 <div className="mx-auto max-w-7xl">
                   {children}
                 </div>

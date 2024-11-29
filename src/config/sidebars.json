@@ -1,0 +1,40 @@
+{
+  "leftSidebar": {
+    "enabled": true,
+    "items": [
+      {
+        "name": "Dashboard",
+        "path": "/dashboard",
+        "icon": "ChartBarIcon",
+        "access": "public",
+        "showInSidebar": true
+      },
+      {
+        "name": "Settings",
+        "path": "/settings",
+        "icon": "CogIcon",
+        "access": "protected",
+        "showInSidebar": true
+      }
+    ]
+  },
+  "rightSidebar": {
+    "enabled": true,
+    "items": [
+      {
+        "name": "Notifications",
+        "path": "/notifications",
+        "icon": "BellIcon",
+        "access": "public",
+        "showInSidebar": true
+      },
+      {
+        "name": "Profile",
+        "path": "/profile",
+        "icon": "UserIcon",
+        "access": "protected",
+        "showInSidebar": true
+      }
+    ]
+  }
+}
