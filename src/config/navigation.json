@@ -26,12 +26,6 @@
       "showInHeader": true
     },
     {
-      "name": "Admin",
-      "path": "/pages/admin",
-      "access": "protected",
-      "showInHeader": true
-    },
-    {
       "name": "Pages",
       "path": "/pages",
       "access": "protected",
@@ -42,13 +36,6 @@
       "path": "/pages/admin/settings/footer",
       "access": "protected",
       "showInHeader": false
-    },
-    {
-      "name": "Sidebar Settings",
-      "path": "/pages/admin/settings/admin/settings/sidebars",
-      "access": "protected",
-      "showInHeader": true,
-      "folder": "admin/settings"
     },
     {
       "name": "ff",
